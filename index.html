@@ -1,7 +1,10 @@
 <!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>VYBE — Bo Deveraux</title>
 <style>
 :root{
@@ -155,10 +158,16 @@ main::-webkit-scrollbar{display:none}
   transition:transform .22s ease,background .35s ease,color .35s ease,box-shadow .35s ease
 }
 .request-btn.sent{
-  color:#dfffea;
-  background:rgba(68,169,107,.18);
-  border:1px solid rgba(128,227,164,.38);
-  box-shadow:none
+  color:#ffffff;
+  background:linear-gradient(90deg,#1c3fae,#0a1f66);
+  border:1px solid rgba(255,255,255,.30);
+  box-shadow:0 10px 28px rgba(28,63,174,.40)
+}
+.request-btn.accepted{
+  color:#07111a;
+  background:linear-gradient(90deg,var(--green),var(--cyan));
+  border:1px solid rgba(255,255,255,.30);
+  box-shadow:0 10px 28px rgba(128,227,164,.35)
 }
 .bio{margin-top:19px;max-width:650px;color:#c8d2da;font-size:14px;line-height:1.55}
 .location{margin-top:12px;color:var(--muted);font-size:12px}
@@ -246,17 +255,17 @@ main::-webkit-scrollbar{display:none}
   color:#07111a;background:linear-gradient(145deg,var(--cyan),var(--blue));
 }
 body.edit-mode .bottom-nav{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 4px)}
-@media(max-width:1220px){
+@media(min-width:999999px){
   .app{grid-template-columns:220px 1fr}.rightbar{display:none}
 }
-@media(max-width:860px){
+@media(min-width:999999px){
   .app{grid-template-columns:84px 1fr}
   .sidebar{padding:24px 14px}.brand-name,.nav-item span,.mini-profile div{display:none}
   .brand,.nav-item{justify-content:center}.nav-item{padding:0}.mini-profile{justify-content:center}
   .content{padding-left:20px;padding-right:20px}.topbar{padding:0 20px}
 }
 .topbar-brand{display:none;width:32px;height:32px;border-radius:10px;flex-shrink:0;box-shadow:0 8px 20px rgba(71,151,255,.28)}
-@media(max-width:640px){
+@media(min-width:999999px){
   .app{grid-template-columns:1fr}
   .sidebar{display:none}
   .bottom-nav{display:flex}
@@ -287,7 +296,7 @@ body.edit-mode .bottom-nav{padding-bottom:calc(env(safe-area-inset-bottom,0px) +
   .tabs{gap:16px;margin:18px 0 14px;font-size:11px}
   .grid{gap:7px}
 }
-@media(max-width:380px){
+@media(min-width:999999px){
   .search span,.search{font-size:11px}
   .name-line h1{font-size:17px}
   .avatar-large{width:74px;height:74px;top:-37px}
@@ -389,7 +398,21 @@ body.edit-mode .edit-banner{display:flex}
    igual (mismo sitio, mismo tamaño, mismo estilo) que en el original.
    ================================================================ */
 :root{ --tracker-cross-color:#000; }
-body{ background: #00B140 !important; }
+html,body{ background:#00B140 !important; }
+body{
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+}
+/* El diseño mantiene siempre su tamaño/composición original de escritorio;
+   .stage lo escala entero para que quepa en cualquier pantalla sin
+   cambiar el layout ni la posición del botón. */
+.app{
+  width:1180px !important;
+  height:760px !important;
+  transform-origin:center center;
+  flex-shrink:0;
+}
+main{ overflow:hidden !important; }
 *:not(#requestButton):not(#requestButton *){
   background-image: none !important;
   background-color: #00B140 !important;
@@ -524,30 +547,28 @@ body{ background: #00B140 !important; }
 <script>
 (() => {
   const button = document.getElementById("requestButton");
-  const toast = document.getElementById("toast");
-  let sent = false;
-  let previousLabel = null;
+  let state = "idle"; // idle -> sent -> accepted
+  let acceptTimer = null;
 
   button.addEventListener("click", () => {
-    if (document.body.classList.contains("edit-mode")) return;
-
-    if (!sent) {
-      previousLabel = button.textContent;
-      sent = true;
-
+    if (state === "idle") {
+      state = "sent";
       button.textContent = "Request Sent";
+      button.classList.remove("accepted");
       button.classList.add("sent");
-      toast.classList.add("show");
 
-      setTimeout(() => {
-        toast.classList.remove("show");
-      }, 3000);
+      acceptTimer = setTimeout(() => {
+        state = "accepted";
+        button.textContent = "Accepted";
+        button.classList.remove("sent");
+        button.classList.add("accepted");
+      }, 10000);
     } else {
-      sent = false;
-
-      button.textContent = previousLabel || "Add Friend";
-      button.classList.remove("sent");
-      toast.classList.remove("show");
+      // Click durante "sent" o "accepted" reinicia para otra toma
+      clearTimeout(acceptTimer);
+      state = "idle";
+      button.textContent = "Add Friend";
+      button.classList.remove("sent", "accepted");
     }
   });
 })();
@@ -942,5 +963,21 @@ body{ background: #00B140 !important; }
 </script>
 
 
+
+<script>
+(() => {
+  const stage = document.querySelector(".app");
+  function fitStage(){
+    const vw = (window.visualViewport ? window.visualViewport.width : window.innerWidth);
+    const vh = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
+    const scale = Math.min(vw / 1180, vh / 760);
+    stage.style.transform = "scale(" + scale + ")";
+  }
+  window.addEventListener("resize", fitStage);
+  window.addEventListener("orientationchange", fitStage);
+  if (window.visualViewport) window.visualViewport.addEventListener("resize", fitStage);
+  fitStage();
+})();
+</script>
 
 </body></html>
